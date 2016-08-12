@@ -13,7 +13,8 @@ The current version includes the following functions:
 - cvpls.m: cross-validation routine, including the possibility of deconfounding and handling dependences in the data
 - permpls.m: permutation testing using bpls to check the statistical relation between the input and the output matrices
 
-See example.m for an example of usage.
+(The hierarchical structure of permutation testing is described in:
+Anderson M Winkler, Matthew A Webster, Diego Vidaurre, Thomas E Nichols, Stephen M Smith (2016). Multi-level block permutation. NeuroImage )
 
 The structure 'options' can include the following fields:
 
@@ -26,6 +27,8 @@ The structure 'options' can include the following fields:
 - initialisation: strategy to init the latent components: 'cca', 'pca', 'pls' or 'random', which respectively use the matlab routines canoncorr, pca, plsregress and randn. 
 - tol: threshold in the decrement of the free energy to stop the variational loop.
 - cyc: maximum number of variational iterations.
+
+See example.m for an example of usage.
 
 The output structure contains the fields P, Q, Z, sigma, gamma, phi, Omega and Psi, that correspond to the variables defined in the paper, as well as a structure 'options' with a copy of the corresponding structure supplied by the user. It also contains a structure with the priors for each model variable. 
 
