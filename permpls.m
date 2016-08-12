@@ -134,7 +134,7 @@ for perm=1:Nperm
         from=find(PERM==0);  pto=randperm(length(from));  to=from(pto);  PERM(from)=to;
         Yin=YinORIG(PERM,:);
     end
-    if mod(perm,10)==0 && verbose, fprintf('iteration %d \n',perm); end
+    if mod(perm,10)==0 && verbose, fprintf('Permutation %d \n',perm); end
     
     fit = plsinit(Xin,Yin,parameters);
     if cyc>0

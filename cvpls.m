@@ -185,7 +185,7 @@ for perm=1:Nperm
     if ~isempty(confounds), predictedYpC = zeros(N,1); end
     
     % create the inner CV structure - stratified for family=multinomial
-    folds = cvfolds(Yin,'gaussian',CVscheme(1),allcs);
+    folds = cvfolds(Yin,CVscheme(1),allcs);
     if perm==1, chosenK = zeros(length(folds),1); end
     
     for ifold = 1:length(folds) 
@@ -252,7 +252,7 @@ for perm=1:Nperm
         end
         
         % create the inner CV structure - stratified for family=multinomial
-        Qfolds = cvfolds(Y,'gaussian',CVscheme(2),Qallcs);
+        Qfolds = cvfolds(Y,CVscheme(2),Qallcs);
         
         % parameter selection loop
         Dev = Inf(1,length(K));

@@ -1,4 +1,4 @@
-function [model,fe] = plsvbinference (X,Y,model,show_it,XX)
+function [model,fe] = plsvbinference (X,Y,model,verbose,XX)
 % function [model] = plstrain (X,Y,model)
 %
 % Update observation model
@@ -27,7 +27,7 @@ end
 q = size(Y,2);
 
 if nargin<3, model = plsinit(X,Y); end
-if nargin<4, show_it = 1; end
+if nargin<4, verbose = 1; end
 if nargin<5, XX = X' * X; end 
 
 k = model.options.k;
@@ -42,20 +42,12 @@ model.sigma.Gam_rate = 100000*ones(p,1);
 model.Psi.Gam_shape = 1;
 model.Psi.Gam_rate = ones(1,q);
 
-last_fe = Inf; 
-
 for it=1:model.options.cyc
-
+    
     model.phi.Gam_rate = 1; model.phi.Gam_shape =1;
     
     fe_old = fe;
-    
-    Yhat = model.Z.Mu_Z * model.Q.Mu_Q;
-    G = Y * model.pca.A_Y';
-    Ghat = Yhat * model.pca.A_Y';
-    fprintf('%d %g %g   -   ',it,mean(1 - sum((G - Ghat).^2) ./ sum((G - repmat(mean(G),size(G,1),1)).^2) ),...
-        mean(1 - sum((Y - Yhat).^2) ./ sum((Y - repmat(mean(Y),size(G,1),1)).^2))) 
- 
+     
     % Z
     QPsi = model.Q.Mu_Q * diag(model.Psi.Gam_shape ./ model.Psi.Gam_rate);
     QPsiQ = QPsi * model.Q.Mu_Q';
@@ -168,7 +160,7 @@ for it=1:model.options.cyc
     %if feIncr< 0,
     %    mesgstr='(Violation)';
     %end;
-    if show_it, fprintf('Iteration %i, Free energy = %f %s \n',it,fe,mesgstr); end
+    if verbose, fprintf('Iteration %i, Free energy = %f %s \n',it,fe,mesgstr); end
     
     %%% termination conditions
     if abs(feIncr/fe_old*100) <model.options.tol, break; end
