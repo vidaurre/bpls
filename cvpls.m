@@ -1,4 +1,30 @@
 function [predictedY,stats,predictedYmean] = cvpls(Xin,Yin,parameters,varargin)
+% Cross-validation using PLS with possibility of permutation testing
+%
+% INPUTS
+% Xin - input data matrix  (samples X features1)
+% Yin - output data matrix (samples X features2)
+% parameters is a structure with:
+%   + The parameters for PLS (see plsinit.m)
+%   + K, a vector with the number of PLS components to evaluate (see plsinit.m)
+%   + Nfeatures - Proportion of features from Xin to be initially filtered  
+%   + CVscheme - vector of two elements: first is number of folds for model evaluation;
+%             second is number of folds for the model selection phase (0 in both for LOO)
+%   + Nperm - number of permutations (set to 0 to skip permutation testing)
+%   + verbose -  display progress?
+% correlation_structure (optional) - A (Nsamples X Nsamples) matrix with
+%                                   integer dependency labels (e.g., family structure), or 
+%                                    A (Nsamples X 1) vector defining some
+%                                    grouping: (1...no.groups) or 0 for no group
+% Permutations (optional but must also have correlation_structure) - pre-created set of permutations
+% confounds (optional) - features that potentially influence the inputs, and the outputs for family="gaussian'
+%
+% OUTPUTS
+% + pval -  p-value resulting of performing permutation testing on PCA+CCA
+% + R2 - explained variance for each variable in Yin
+% + R2p - explained variance for each variable in Yin and permutation
+%
+% Diego Vidaurre, University of Oxford (2016)
 
 [N,q] = size(Yin); p = size(Xin,2);
 if nargin<3, parameters = {}; end

@@ -6,6 +6,17 @@ function [model] = plsinit(X,Y,options)
 % X             Inputs
 % Y             Outputs
 % options       Training options
+% - k: number of latent components.
+% - pcaX: if specified higher than 0, PLS will use a lowrank version of X; 
+%       then, pcaX (between 0 and 1) indicates the proportion of variance explained from X  
+% - pcaY: if specified higher than 0, PLS will use a lowrank version of Y; 
+%       then, pcaY (between 0 and 1) indicates the proportion of variance explained from Y
+% - adaptive: should adaptiveness be use?
+% - initialisation: strategy to init the latent components: 
+%       'cca', 'pca', 'pls' or 'random', which respectively use the matlab routines 
+%       canoncorr, pca, plsregress and randn.
+% - tol: threshold in the decrement of the free energy to stop the variational loop.
+% - cyc: maximum number of variational iterations.
 %
 % Author: Diego Vidaurre, University of Oxford
 

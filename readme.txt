@@ -5,19 +5,25 @@ Method published in Vidaurre, D., van Gerven M., Bielza, C. & Larrañaga, P & He
 Published: December 2013.
 Matlab version: 8.0.0.783 (R2012b) - It should work for a wide range of matlab versions as far as they implement plsregress and pca.
 
-The current version includes three main functions:
+The current version includes the following functions:
 
 - plsinit.m: initialises the model, and receives the training options.
 - plsvbinference.m: trains the model.
 - plsfenergy.m: computes de free energy of the model, and is called at each iteration by plsvbinference.m.
+- cvpls.m: cross-validation routine, including the possibility of deconfounding and handling dependences in the data
+- permpls.m: permutation testing using bpls to check the statistical relation between the input and the output matrices
 
 See example.m for an example of usage.
 
 The structure 'options' can include the following fields:
 
 - k: number of latent components.
+- pcaX: if specified higher than 0, PLS will use a lowrank version of X; 
+       then, pcaX (between 0 and 1) indicates the proportion of variance explained from X  
+- pcaY: if specified higher than 0, PLS will use a lowrank version of Y; 
+       then, pcaY (between 0 and 1) indicates the proportion of variance explained from Y
 - adaptive: should adaptiveness be use? 
-- initialisation: strategy to init the latent components: 'pca', 'pls' or 'random', which respectively use the matlab routines pca, plsregress and randn. 
+- initialisation: strategy to init the latent components: 'cca', 'pca', 'pls' or 'random', which respectively use the matlab routines canoncorr, pca, plsregress and randn. 
 - tol: threshold in the decrement of the free energy to stop the variational loop.
 - cyc: maximum number of variational iterations.
 
