@@ -14,11 +14,11 @@ function [model,fe] = plsvbinference (X,Y,model,verbose,XX)
 %
 % Author: Diego Vidaurre, University of Oxford
 
-if isfield(model.pca,'A_X'), 
+if isfield(model,'pca') && isfield(model.pca,'A_X'), 
     X = X - repmat(model.pca.mx,size(X,1),1);
     X = X * model.pca.A_X; 
 end
-if isfield(model.pca,'A_Y'), 
+if isfield(model,'pca') && isfield(model.pca,'A_Y'), 
     Y = Y - repmat(model.pca.my,size(Y,1),1);
     Y = Y * model.pca.A_Y; 
 end
