@@ -84,7 +84,8 @@ end
 if (nargin>5)
     confounds = varargin{3};
     confounds = confounds - repmat(mean(confounds),N,1);
-    [~,Xin,~,Yin] = nets_deconfound(Xin,Yin,confounds,'gaussian',[],[]);
+    Xin = Xin - confounds * pinv(confounds) * Xin; 
+    Yin = Yin - confounds * pinv(confounds) * Yin;
     % Standardize again
     if standardiseX
         Xin = Xin - repmat(mean(Xin),N,1);

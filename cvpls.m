@@ -182,7 +182,7 @@ for perm=1:Nperm
     end
     
     predictedYp = zeros(N,q);
-    if ~isempty(confounds), predictedYpC = zeros(N,1); end
+    if ~isempty(confounds), predictedYpC = zeros(N,q); end
     
     % create the inner CV structure - stratified for family=multinomial
     folds = cvfolds(Yin,CVscheme(1),allcs);
@@ -270,7 +270,7 @@ for perm=1:Nperm
                 if ~isempty(confounds),
                     Qmy1 = mean(QY);
                     QY = QY - repmat(Qmy1,length(Qji),1);
-                    QbetaY = pinv(Qconfounds(ji,:))*QY;
+                    QbetaY = pinv(Qconfounds(Qji,:))*QY;
                     QY = QY - Qconfounds(Qji,:)*QbetaY;
                 end
                 
@@ -375,8 +375,8 @@ for perm=1:Nperm
                 [~,pvd] = corrcoef(YC,predictedYpC); stats.pval_deconf=pvd(1,2);
             end
         end
-        stats.cod = 1 - stats.dev / stats.nulldev;
-        if ~isempty(confounds), stats.cod_deconf = 1 - stats.dev_deconf / stats.nulldev_deconf; end
+        stats.cod = 1 - stats.dev ./ stats.nulldev;
+        if ~isempty(confounds), stats.cod_deconf = 1 - stats.dev_deconf ./ stats.nulldev_deconf; end
     else
         fprintf('Permutation %d \n',perm)
     end
