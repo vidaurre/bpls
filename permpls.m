@@ -18,7 +18,7 @@ function [pval,pval_q,R2,R2p,Yhat] = permpls(Xin,Yin,parameters,varargin)
 % OUTPUTS
 % + pval -  p-value resulting of performing permutation testing on PCA+CCA
 % + R2 - explained variance for each variable in Yin
-% + R2p - explained variance for each variable in Yin and permutation
+% + R2p - explained variance for each variable in Yin, for each permutation
 %
 % Diego Vidaurre, University of Oxford (2016)
 
@@ -99,7 +99,6 @@ end
 
 % PLS for original data
 R2p = zeros(Nperm,q);
-R2 = zeros(1,q);
 fit = plsinit(Xin,Yin,parameters);
 if cyc>0
     fit = plsvbinference(Xin,Yin,fit,0);
@@ -107,7 +106,7 @@ end
 Yhat = plspredict (Xin,fit);
 
 my = mean(Yin);
-R2 = 1 - sum((Yin - Yhat.Mu).^2) ./ sum((Yin - repmat(my,N,1)).^2);
+R2 = 1 - sum((Yin - Yhat.Mu).^2) ./ sum((Yin - repmat(my,N,1)).^2); % 1 x q
 
 
 % Permute

@@ -82,7 +82,7 @@ else
 end
 
 % get confounds, and deconfound Xin
-confounds=[]; mx1 = zeros(1,p);
+confounds=[]; 
 if (nargin>5)
     mx1 = mean(Xin);
     Xin = Xin - repmat(mx1,N,1);
@@ -93,8 +93,7 @@ if (nargin>5)
     Xin = Xin - confounds*betaX;
 end
 
-% PCA-ing Xin
-mx2 = zeros(1,p);
+% PCA-ing Xin - note that we don't scale Xin
 if pcaX>0
     mx2 = mean(Xin);
     Xin = Xin - repmat(mx2,N,1);
@@ -102,8 +101,8 @@ if pcaX>0
     r_X = (cumsum(r_X)/sum(r_X));
     Xin = Xin(:,r_X<pcaX);
     A_X = A_X(:,r_X<pcaX);
-    if size(Xin,2) <= any(K)
-        error('Some K is higher than the number of principal components for X - decrease pcaX')
+    if any(size(Xin,2) <= K)
+        error('Some K is > than the no. of principal components - increase pcaX or decrease K') 
     end
 end
 
@@ -214,7 +213,7 @@ for perm=1:Nperm
         
         YCmean(J,:) = repmat(mean(Y),length(J),1);
         
-        % PCA-ing Y
+        % PCA-ing Y - note that we don't scale Yin
         my2 = zeros(1,q);
         if pcaY > 0
             my2 = mean(Y); 
@@ -224,7 +223,7 @@ for perm=1:Nperm
             Y = Y(:,r_Y<pcaY);
             A_Y = A_Y(:,r_Y<pcaY);
             if size(Y,2) <= any(K)
-                error('Some K is higher than the number of principal components for Y - decrease pcaY')
+                error('Some K is > than the no. of principal components - increase pcaY or decrease K') 
             end
         end
    
@@ -282,8 +281,8 @@ for perm=1:Nperm
                     r_QY = (cumsum(r_QY)/sum(r_QY));
                     QY = QY(:,r_QY<pcaY);
                     A_QY = A_QY(:,r_QY<pcaY);
-                    if size(QY,2) <= any(K)
-                        error('Some K is higher than the number of principal components for Y - decrease pcaY')
+                    if any(size(QY,2) <= K)
+                        error('Some K is > than the no. of principal components - increase pcaY or decrease K') 
                     end
                 end
                 
@@ -296,8 +295,8 @@ for perm=1:Nperm
                 
                 % predict
                 QXJ = QXin(QJ,:);
-                YDist = plspredict(QXJ,plsfit);
-                QpredictedYpQJ = YDist.Mu; + repmat(Qmy,length(QJ),1);
+                YDistr = plspredict(QXJ,plsfit);
+                QpredictedYpQJ = YDistr.Mu; + repmat(Qmy,length(QJ),1);
                 
                 % undo whatever we did before
                 if pcaY > 0
@@ -331,8 +330,8 @@ for perm=1:Nperm
 
         % predict the test fold
         XJ = Xin(J,groti);
-        distY = plspredict(XJ,plsfit);
-        predictedYpJ = distY.Mu + repmat(my,length(J),1);
+        distrY = plspredict(XJ,plsfit);
+        predictedYpJ = distrY.Mu + repmat(my,length(J),1);
         
         % undo whatever we did before
         if pcaY > 0
