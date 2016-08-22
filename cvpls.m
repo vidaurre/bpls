@@ -46,6 +46,8 @@ if ~isfield(parameters,'Nperm'), Nperm=1;
 else Nperm = parameters.Nperm; end
 if ~isfield(parameters,'riemann'), riemann = length(size(Xin))==3;
 else riemann = parameters.riemann; end
+if ~isfield(parameters,'typecorr'), typecorr = 'Pearson';
+else typecorr = parameters.typecorr; end
 if ~isfield(parameters,'keepvar'), keepvar = 1;
 else keepvar = parameters.keepvar; end
 if ~isfield(parameters,'verbose'), verbose=0;
@@ -152,8 +154,6 @@ grotperms = zeros(Nperm,1);
 YC = zeros(size(Yin));
 YCmean = zeros(size(Yin));
 
-C = inv(cov(Yin) + 1e-5*eye(q));
-
 for perm=1:Nperm
     if (perm>1)
         if isempty(cs)           % simple full permutation with no correlation structure
@@ -187,21 +187,18 @@ for perm=1:Nperm
     folds = cvfolds(Yin,CVscheme(1),allcs);
     if perm==1, chosenK = zeros(length(folds),1); end
     
-    for ifold = 1:length(folds) 
+    for ifold = 1:length(folds)
         
         if verbose, fprintf('CV iteration %d \n',ifold); end
         J = folds{ifold};
         if isempty(J), continue; end
         
         ji = setdiff(1:N,J); QN = length(ji);
-        X = Xin(ji,:); Y = Yin(ji,:);  
+        X = Xin(ji,:); Y = Yin(ji,:);
         
         % computing mean of the response in the original space
         YinORIGmean(J,:) = repmat(mean(Y),length(J),1);
-        
-        % precision matrix 
-        Cji = inv(cov(Y) + 1e-5*eye(q));
-        
+                
         % deconfounding business
         my1 = zeros(1,q);
         if ~isempty(confounds),
@@ -210,26 +207,29 @@ for perm=1:Nperm
             betaY = pinv(confounds(ji,:))*Y;
             Y = Y - confounds(ji,:)*betaY;
         end
+
+        % precision matrix
+        Cji = inv(cov(Y) + 1e-5*eye(q));
         
         YCmean(J,:) = repmat(mean(Y),length(J),1);
         
         % PCA-ing Y - note that we don't scale Yin
         my2 = zeros(1,q);
         if pcaY > 0
-            my2 = mean(Y); 
+            my2 = mean(Y);
             Y = Y - repmat(my2,size(Y,1),1);
             [A_Y,Y,r_Y] = pca(Y);
             r_Y = (cumsum(r_Y)/sum(r_Y));
             Y = Y(:,r_Y<pcaY);
             A_Y = A_Y(:,r_Y<pcaY);
             if size(Y,2) <= any(K)
-                error('Some K is > than the no. of principal components - increase pcaY or decrease K') 
+                error('Some K is > than the no. of principal components - increase pcaY or decrease K')
             end
         end
-   
+        
         % centering response
         my = mean(Y); Y = Y - repmat(my,size(Y,1),1);
-
+        
         % pre-kill features
         if Nfeatures<p && Nfeatures>0,
             dev = sum(abs(corr(X,Y)),2);
@@ -239,39 +239,46 @@ for perm=1:Nperm
             groti = find(sx>0);
         end
         
-        QXin = Xin(ji,groti); 
+        QXin = Xin(ji,groti);
         QYin = Yin(ji,:);
         if ~isempty(confounds), Qconfounds=confounds(ji,:); end
         X = X(:,groti);
         
         % family structure for this fold
-        Qallcs=[]; 
+        Qallcs=[];
         if (~isempty(cs)),
-            [Qallcs(:,2),Qallcs(:,1)]=ind2sub([length(cs(ji,ji)) length(cs(ji,ji))],find(cs(ji,ji)>0));  
+            [Qallcs(:,2),Qallcs(:,1)]=ind2sub([length(cs(ji,ji)) length(cs(ji,ji))],find(cs(ji,ji)>0));
         end
         
         % create the inner CV structure - stratified for family=multinomial
         Qfolds = cvfolds(Y,CVscheme(2),Qallcs);
         
         % parameter selection loop
-        Dev = Inf(1,length(K));
-        for ik = 1:length(K)
-            QpredictedYp = Inf(QN,q);
-            options.k = K(ik);
+        if length(K)>1
+            
+            Dev = Inf(1,length(K));
+            QpredictedYp = Inf(QN,q,length(K));
+            QpredictedYpd = Inf(QN,q,length(K));
+            QmeanYpd = Inf(QN,q);
+            QYC = Inf(QN,q);
             
             % Inner CV loop to estimate accuracy for k
             for Qifold = 1:length(Qfolds)
                 QJ = Qfolds{Qifold};
-                Qji = setdiff(1:QN,QJ); 
+                Qji = setdiff(1:QN,QJ);
                 QX = QXin(Qji,:); QY = QYin(Qji,:);
-                         
+                
                 % deconfounding business
                 if ~isempty(confounds),
                     Qmy1 = mean(QY);
                     QY = QY - repmat(Qmy1,length(Qji),1);
                     QbetaY = pinv(Qconfounds(Qji,:))*QY;
                     QY = QY - Qconfounds(Qji,:)*QbetaY;
+                    QYC(QJ,:) = QYin(QJ,:) - repmat(Qmy1,length(QJ),1);
+                    QYC(QJ,:) = QYC(QJ,:) - Qconfounds(QJ,:)*QbetaY;
                 end
+                
+                QmeanYpd(QJ,:) = repmat(mean(QY),length(QJ),1);
                 
                 % PCA-ing Y
                 if pcaY > 0
@@ -282,46 +289,65 @@ for perm=1:Nperm
                     QY = QY(:,r_QY<pcaY);
                     A_QY = A_QY(:,r_QY<pcaY);
                     if any(size(QY,2) <= K)
-                        error('Some K is > than the no. of principal components - increase pcaY or decrease K') 
+                        error('Some K is > than the no. of principal components - increase pcaY or decrease K')
                     end
                 end
                 
                 % centering response
                 Qmy = mean(QY); QY = QY - repmat(Qmy,size(QY,1),1);
                 
-                % train model
-                plsfit = plsinit(QX,QY,options);
-                if options.cyc>0, plsfit = plsvbinference(QX,QY,plsfit,0); end 
-                
-                % predict
-                QXJ = QXin(QJ,:);
-                YDistr = plspredict(QXJ,plsfit);
-                QpredictedYpQJ = YDistr.Mu; + repmat(Qmy,length(QJ),1);
-                
-                % undo whatever we did before
-                if pcaY > 0
-                    QpredictedYp(QJ,:) = QpredictedYpQJ * A_QY' + repmat(Qmy2,length(QJ),1);
-                else 
-                    QpredictedYp(QJ,:) = QpredictedYpQJ;
-                end
-                if ~isempty(confounds),
-                    QpredictedYp(QJ,:) = QpredictedYp(QJ,:) + ...
-                        Qconfounds(QJ,:)*QbetaY + repmat(Qmy1,length(QJ),1);
+                for ik = 1:length(K)
+                    
+                    options.k = K(ik);
+
+                    % train model
+                    plsfit = plsinit(QX,QY,options);
+                    if options.cyc>0, plsfit = plsvbinference(QX,QY,plsfit,0); end
+                    
+                    % predict
+                    QXJ = QXin(QJ,:);
+                    YDistr = plspredict(QXJ,plsfit);
+                    QpredictedYpQJ = YDistr.Mu + repmat(Qmy,length(QJ),1);
+                    
+                    % undo whatever we did before
+                    if pcaY > 0
+                        QpredictedYp(QJ,:,ik) = QpredictedYpQJ * A_QY' + repmat(Qmy2,length(QJ),1);
+                    else
+                        QpredictedYp(QJ,:,ik) = QpredictedYpQJ;
+                    end
+                    QpredictedYpd(QJ,:,ik) = QpredictedYp(QJ,:,ik);
+                    if ~isempty(confounds),
+                        QpredictedYp(QJ,:,ik) = QpredictedYpd(QJ,:,ik) + ...
+                            Qconfounds(QJ,:)*QbetaY + repmat(Qmy1,length(QJ),1);
+                    end
                 end
             end
             
-            % Pick the one with the lowest deviance in original space 
-            d = QpredictedYp - QYin;
+            d = QYC - QmeanYpd;
             Cd = Cji * d';
-            Qdev = zeros(QN,1);
+            Qdev0 = zeros(QN,1);
             for n=1:size(QpredictedYp,2)
-                Qdev = Qdev + d(:,n).*Cd(n,:)';
+                Qdev0 = Qdev0 + d(:,n).*Cd(n,:)';
             end
-            Dev(ik) = mean(Qdev);
+            Dev0 = mean(Qdev0);
+            
+            for ik = 1:length(K)
+                % Pick the one with the lowest deviance 
+                %d = QpredictedYp(:,:,ik) - QYin; % in original space
+                d = QpredictedYpd(:,:,ik) - QYC; % in deconfounded space
+                Cd = Cji * d';
+                Qdev = zeros(QN,1);
+                for n=1:size(QpredictedYp,2)
+                    Qdev = Qdev + d(:,n).*Cd(n,:)';
+                end
+                Dev(ik) = mean(Qdev);
+            end
+            
+            [~,I] = max(1 - Dev/Dev0);
+            options.k = K(I);
+        else
+            I = 1;
         end
-        
-        [~,I] = min(Dev);
-        options.k = K(I);
         if perm==1, chosenK(ifold) = K(I); end
 
         % train model
@@ -348,11 +374,14 @@ for perm=1:Nperm
                 
     end
     
-    % grotperms computed in original space
-    d = predictedYp - Yin;
+    % precision matrix
+    C = inv(cov(YC) + 1e-5*eye(q));
+
+    % grotperms computed in deconfounded space
+    d = predictedYpC - YC;
     Cd = C * d';
     dev = zeros(N,1);
-    for n=1:size(predictedYp,2)
+    for n=1:size(predictedYpC,2)
         dev = dev + d(:,n).*Cd(n,:)';
     end    
     grotperms(perm) = mean(dev);
@@ -364,17 +393,39 @@ for perm=1:Nperm
         stats.K = chosenK;
         stats.dev = sum((YinORIG-predictedYp).^2);
         stats.nulldev = sum((YinORIG-YinORIGmean).^2);
+        stats.cod = 1 - stats.dev ./ stats.nulldev;
         if Nperm==1
-            [~,pv] = corrcoef(YinORIG,predictedYp); stats.pval=pv(1,2);
-        end
-        if ~isempty(confounds),
-            stats.dev_deconf = sum((YC-predictedYpC).^2);
-            stats.nulldev_deconf = sum((YC-YCmean).^2);
-            if Nperm==1
-                [~,pvd] = corrcoef(YC,predictedYpC); stats.pval_deconf=pvd(1,2);
+            stats.corr = zeros(1,size(YinORIG,2));
+            stats.pval = zeros(1,size(YinORIG,2));
+            for j=1:size(YinORIG,2)
+                [stats.corr(j),pv] = corr(YinORIG(:,j),predictedYp(:,j),...
+                    'type',typecorr);
+                if stats.corr(j)>0
+                    stats.pval(j)=pv;
+                else
+                    stats.pval(j)=1;
+                end
             end
         end
-        stats.cod = 1 - stats.dev ./ stats.nulldev;
+        if ~isempty(confounds)
+            stats.dev_deconf = sum((YC-predictedYpC).^2);
+            stats.nulldev_deconf = sum((YC-YCmean).^2);
+            stats.cod_deconf = 1 - stats.dev_deconf ./ stats.nulldev_deconf;
+            if Nperm==1
+                stats.corr_deconf = zeros(1,size(YC,2));
+                stats.pval_deconf = zeros(1,size(YC,2));
+                for j=1:size(YC,2)
+                    [stats.corr_deconf(j),pvd] = corr(YC(:,j),predictedYpC(:,j),...
+                        'type',typecorr);
+                    if stats.corr_deconf(j)>0
+                        stats.pval_deconf(j)=pvd;
+                    else 
+                        stats.pval_deconf(j)=1;
+                    end
+                end
+            end
+            
+        end
         if ~isempty(confounds), stats.cod_deconf = 1 - stats.dev_deconf ./ stats.nulldev_deconf; end
     else
         fprintf('Permutation %d \n',perm)
