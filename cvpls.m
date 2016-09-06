@@ -48,6 +48,8 @@ if ~isfield(parameters,'riemann'), riemann = length(size(Xin))==3;
 else riemann = parameters.riemann; end
 if ~isfield(parameters,'typecorr'), typecorr = 'Pearson';
 else typecorr = parameters.typecorr; end
+if ~isfield(parameters,'mselmetric'), mselmetric = 'R2';
+else mselmetric = parameters.mselmetric; end
 if ~isfield(parameters,'keepvar'), keepvar = 1;
 else keepvar = parameters.keepvar; end
 if ~isfield(parameters,'verbose'), verbose=0;
@@ -96,7 +98,7 @@ if (nargin>5)
 end
 
 % PCA-ing Xin - note that we don't scale Xin
-if pcaX>0
+if pcaX>0 && pcaX<1
     mx2 = mean(Xin);
     Xin = Xin - repmat(mx2,N,1);
     [A_X,Xin,r_X] = pca(Xin);
@@ -215,7 +217,7 @@ for perm=1:Nperm
         
         % PCA-ing Y - note that we don't scale Yin
         my2 = zeros(1,q);
-        if pcaY > 0
+        if pcaY > 0 && pcaY < 1
             my2 = mean(Y);
             Y = Y - repmat(my2,size(Y,1),1);
             [A_Y,Y,r_Y] = pca(Y);
@@ -256,7 +258,7 @@ for perm=1:Nperm
         % parameter selection loop
         if length(K)>1
             
-            Dev = Inf(1,length(K));
+            L = Inf(1,length(K));
             QpredictedYp = Inf(QN,q,length(K));
             QpredictedYpd = Inf(QN,q,length(K));
             QmeanYpd = Inf(QN,q);
@@ -281,7 +283,7 @@ for perm=1:Nperm
                 QmeanYpd(QJ,:) = repmat(mean(QY),length(QJ),1);
                 
                 % PCA-ing Y
-                if pcaY > 0
+                if pcaY > 0 && pcaY < 1
                     Qmy2 = mean(QY);
                     QY = QY - repmat(Qmy2,length(Qji),1);
                     [A_QY,QY,r_QY] = pca(QY);
@@ -310,7 +312,7 @@ for perm=1:Nperm
                     QpredictedYpQJ = YDistr.Mu + repmat(Qmy,length(QJ),1);
                     
                     % undo whatever we did before
-                    if pcaY > 0
+                    if pcaY > 0 && pcaY < 1
                         QpredictedYp(QJ,:,ik) = QpredictedYpQJ * A_QY' + repmat(Qmy2,length(QJ),1);
                     else
                         QpredictedYp(QJ,:,ik) = QpredictedYpQJ;
@@ -323,30 +325,43 @@ for perm=1:Nperm
                 end
             end
             
-            d = QYC - QmeanYpd;
-            Cd = Cji * d';
-            Qdev0 = zeros(QN,1);
-            for n=1:size(QpredictedYp,2)
-                Qdev0 = Qdev0 + d(:,n).*Cd(n,:)';
+            if strcmpi(mselmetric,'R2')
+                d = QYC - QmeanYpd;
+                Cd = Cji * d';
+                QL0 = zeros(QN,1);
+                for n=1:size(QpredictedYp,2)
+                    QL0 = QL0 + d(:,n).*Cd(n,:)';
+                end
+                L0 = mean(QL0);
             end
-            Dev0 = mean(Qdev0);
             
             for ik = 1:length(K)
-                % Pick the one with the lowest deviance 
-                %d = QpredictedYp(:,:,ik) - QYin; % in original space
-                d = QpredictedYpd(:,:,ik) - QYC; % in deconfounded space
-                Cd = Cji * d';
-                Qdev = zeros(QN,1);
-                for n=1:size(QpredictedYp,2)
-                    Qdev = Qdev + d(:,n).*Cd(n,:)';
+                if strcmpi(mselmetric,'R2')
+                    %d = QpredictedYp(:,:,ik) - QYin; % in original space
+                    d = QpredictedYpd(:,:,ik) - QYC; % in deconfounded space
+                    Cd = Cji * d';
+                    QL = zeros(QN,1);
+                    for n=1:size(QpredictedYp,2)
+                        QL = QL + d(:,n).*Cd(n,:)';
+                    end
+                    L(ik) = mean(QL);
+                else 
+                    for j = 1:size(QpredictedYpd,2)
+                        L(ik) = L(ik) + corr(QpredictedYpd(:,j,ik),QYC(:,j),'type',mselmetric);
+                    end
                 end
-                Dev(ik) = mean(Qdev);
+                    
             end
             
-            [~,I] = max(1 - Dev/Dev0);
+            if strcmpi(mselmetric,'R2')
+                [~,I] = max(1 - L/L0);
+            else
+                [~,I] = max(L);
+            end
             options.k = K(I);
         else
             I = 1;
+            options.k = K(I);
         end
         if perm==1, chosenK(ifold) = K(I); end
 
@@ -360,7 +375,7 @@ for perm=1:Nperm
         predictedYpJ = distrY.Mu + repmat(my,length(J),1);
         
         % undo whatever we did before
-        if pcaY > 0
+        if pcaY > 0 && pcaY < 1
             predictedYp(J,:) = predictedYpJ * A_Y' + repmat(my2,length(J),1);
         else
             predictedYp(J,:) = predictedYpJ;

@@ -21,7 +21,8 @@ function [model] = plsinit(X,Y,options)
 % Author: Diego Vidaurre, University of Oxford
 
 model = paramchk(options);
-if model.options.pcaX > 0 || model.options.pcaY > 0
+if (model.options.pcaX > 0 && model.options.pcaX < 1) || ... 
+        (model.options.pcaY > 0 && model.options.pcaY < 1)  
     [X,Y,model.pca] = pcaXY(X,Y,model.options);
 end
 model=initpriors(X,Y,model,options);

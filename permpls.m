@@ -1,4 +1,4 @@
-function [pval,pval_q,R2,R2p,Yhat] = permpls(Xin,Yin,parameters,varargin)
+function [pval,pval_q,m,mp,Yhat] = permpls(Xin,Yin,parameters,varargin)
 % Permutation testing over PLS
 %
 % INPUTS
@@ -7,6 +7,8 @@ function [pval,pval_q,R2,R2p,Yhat] = permpls(Xin,Yin,parameters,varargin)
 % parameters is a structure with:
 %   + The parameters for PLS (see plsinit.m)
 %   + Nperm - number of permutations (set to 0 to skip permutation testing)
+%   + metric - which metric to base permutation testing on:
+%       'R2','Pearson','Spearman'; 'R2' by default
 %   + verbose -  display progress?
 % correlation_structure (optional) - A (Nsamples X Nsamples) matrix with
 %                                   integer dependency labels (e.g., family structure), or 
@@ -16,9 +18,10 @@ function [pval,pval_q,R2,R2p,Yhat] = permpls(Xin,Yin,parameters,varargin)
 % confounds (optional) - features that potentially influence the inputs, and the outputs for family="gaussian'
 %
 % OUTPUTS
-% + pval -  p-value resulting of performing permutation testing on PCA+CCA
-% + R2 - explained variance for each variable in Yin
-% + R2p - explained variance for each variable in Yin, for each permutation
+% + pval -  permutation testing p-value, aggregated for all responses
+% + pval_q - p-value for each response
+% + m - goodness of fit for each variable in Yin (see parameter metric)
+% + mp - goodness of fit for each variable in Yin, for each permutation
 %
 % Diego Vidaurre, University of Oxford (2016)
 
@@ -30,6 +33,9 @@ if ~isfield(parameters,'standardiseY'), standardiseY=1;
 else standardiseY = parameters.standardiseY; end
 if ~isfield(parameters,'cyc'), cyc=0;
 else cyc = parameters.cyc; end
+if ~isfield(parameters,'metric'), metric='R2';
+else metric = parameters.metric; end
+
 if ~isfield(parameters,'verbose'), verbose = 0;
 else verbose = parameters.verbose; end
 
@@ -98,16 +104,22 @@ if (nargin>5)
 end
 
 % PLS for original data
-R2p = zeros(Nperm,q);
+mp = zeros(Nperm,q);
 fit = plsinit(Xin,Yin,parameters);
 if cyc>0
     fit = plsvbinference(Xin,Yin,fit,0);
 end
 Yhat = plspredict (Xin,fit);
 
-my = mean(Yin);
-R2 = 1 - sum((Yin - Yhat.Mu).^2) ./ sum((Yin - repmat(my,N,1)).^2); % 1 x q
-
+if strcmpi(metric,'R2')
+    my = mean(Yin);
+    m = 1 - sum((Yin - Yhat.Mu).^2) ./ sum((Yin - repmat(my,N,1)).^2); % 1 x q
+else
+    m = zeros(1,q);
+    for j=1:q
+        m(j) = corr(Yin(:,j),Yhat.Mu(:,j),'type',metric);
+    end
+end
 
 % Permute
 YinORIG=Yin; 
@@ -141,15 +153,21 @@ for perm=1:Nperm
         fit = plsvbinference(Xin,Yin,fit,0);
     end
     Yhatp = plspredict (Xin,fit);
-    R2p(perm,:) = 1 - sum((Yin - Yhatp.Mu).^2) ./ sum((Yin - repmat(my,N,1)).^2);
+    if strcmpi(metric,'R2')
+        mp(perm,:) = 1 - sum((Yin - Yhatp.Mu).^2) ./ sum((Yin - repmat(my,N,1)).^2);
+    else
+        for j=1:q
+            mp(perm,j) = corr(Yin(:,j),Yhatp.Mu(:,j),'type',metric);
+        end
+    end
 end
 
-R2sum = sum(R2); R2psum = sum(R2p,2);
+msum = sum(m); mpsum = sum(mp,2);
 
-pval = ( sum(R2psum>=R2sum) + 1 ) / (Nperm+1);
+pval = ( sum(mpsum>=msum) + 1 ) / (Nperm+1);
 pval_q = zeros(1,q);
 for j=1:q
-    pval_q(j) = ( sum(R2p(:,j)>=R2(j)) + 1 ) / (Nperm+1);
+    pval_q(j) = ( sum(mp(:,j)>=m(j)) + 1 ) / (Nperm+1);
 end
 
 end

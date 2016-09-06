@@ -15,7 +15,7 @@ function [X,Y,s] = pcaXY(X,Y,m)
 
 s = struct();
 
-if m.pcaX > 0
+if m.pcaX > 0 && m.pcaX < 1
     s.mx = mean(X);
     X = X - repmat(s.mx,size(X,1),1);
     [s.A_X,X,r_X] = pca(X);
@@ -27,7 +27,7 @@ if m.pcaX > 0
     end
 end
 
-if m.pcaY > 0
+if m.pcaY > 0 && m.pcaY < 1
     s.my = mean(Y);
     Y = Y - repmat(s.my,size(Y,1),1);
     [s.A_Y,Y,r_Y] = pca(Y);
