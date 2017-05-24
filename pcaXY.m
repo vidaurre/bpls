@@ -20,8 +20,9 @@ if m.pcaX > 0 && m.pcaX < 1
     X = X - repmat(s.mx,size(X,1),1);
     [s.A_X,X,r_X] = pca(X);
     r_X = (cumsum(r_X)/sum(r_X));
-    X = X(:,r_X<m.pcaX);
-    s.A_X = s.A_X(:,r_X<m.pcaX);
+    ncomp = find(r_X>=m.pcaX,1);
+    X = X(:,1:ncomp);
+    s.A_X = s.A_X(:,1:ncomp);
     if size(X,2) <= m.k
         error('K is > than the no. of principal components - increase pcaX or decrease K') 
     end
@@ -32,8 +33,9 @@ if m.pcaY > 0 && m.pcaY < 1
     Y = Y - repmat(s.my,size(Y,1),1);
     [s.A_Y,Y,r_Y] = pca(Y);
     r_Y = (cumsum(r_Y)/sum(r_Y));
-    Y = Y(:,r_Y<m.pcaY);
-    s.A_Y = s.A_Y(:,r_Y<m.pcaY);
+    ncomp = find(r_Y>=m.pcaY,1);
+    Y = Y(:,ncomp);
+    s.A_Y = s.A_Y(:,ncomp);
     if size(Y,2) <= m.k
         error('K is > than the number of principal components - increase pcaY or decrease K')
     end

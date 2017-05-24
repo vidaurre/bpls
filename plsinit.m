@@ -150,7 +150,7 @@ else
     model.options.initialisation = options.initialisation;
 end
 if ~isfield(options,'pcaX')
-    model.options.pcaX = 0;
+    model.options.pcaX = 0.999;
 else
     model.options.pcaX = options.pcaX;
 end
