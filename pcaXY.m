@@ -34,8 +34,8 @@ if m.pcaY > 0 && m.pcaY < 1
     [s.A_Y,Y,r_Y] = pca(Y);
     r_Y = (cumsum(r_Y)/sum(r_Y));
     ncomp = find(r_Y>=m.pcaY,1);
-    Y = Y(:,ncomp);
-    s.A_Y = s.A_Y(:,ncomp);
+    Y = Y(:,1:ncomp);
+    s.A_Y = s.A_Y(:,1:ncomp);
     if size(Y,2) <= m.k
         error('K is > than the number of principal components - increase pcaY or decrease K')
     end
