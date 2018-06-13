@@ -1,4 +1,4 @@
-function [predictedY,stats,predictedYmean] = cvpls(Xin,Yin,parameters,varargin)
+function [predictedY,stats] = cvpls(Xin,Yin,parameters,varargin)
 % Cross-validation using PLS with possibility of permutation testing
 %
 % INPUTS
@@ -20,9 +20,13 @@ function [predictedY,stats,predictedYmean] = cvpls(Xin,Yin,parameters,varargin)
 % confounds (optional) - features that potentially influence the inputs, and the outputs for family="gaussian'
 %
 % OUTPUTS
-% + pval -  p-value resulting of performing permutation testing on PCA+CCA
-% + R2 - explained variance for each variable in Yin
-% + R2p - explained variance for each variable in Yin and permutation
+% 
+% + predictedY - the cross-validation predicted values 
+% + stats - contains information related to the accuracy of the model:
+%   - pval: p-value resulting of doing a parametric test on the prediction
+%   - corr: correlation between response and predicted response
+%   - cod: coefficient of determination, or explained variance for each variable in Yin
+% + 
 %
 % Diego Vidaurre, University of Oxford (2016)
 
@@ -130,7 +134,7 @@ if (nargin>3)
             gr = unique(cs(nz));  
             for g=gr'
                ss = find(cs==g);
-               for s1=ss,
+               for s1=ss
                    for s2=ss
                        allcs = [allcs; [s1 s2]];
                    end
@@ -203,7 +207,7 @@ for perm=1:Nperm
                 
         % deconfounding business
         my1 = zeros(1,q);
-        if ~isempty(confounds),
+        if ~isempty(confounds)
             my1 = mean(Y);
             Y = Y - repmat(my1,length(ji),1);
             betaY = pinv(confounds(ji,:))*Y;
